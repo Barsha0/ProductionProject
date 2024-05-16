@@ -2,6 +2,10 @@ import os
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
+from tensorflow.keras.layers import Input
+from tensorflow.keras.layers import MultiHeadAttention
+from tensorflow.keras.layers import Dense, Flatten
+from tensorflow.keras.models import Model
 import numpy as np
 import pandas as pd
 
@@ -28,13 +32,14 @@ X_test_scaled = scaler.transform(X_test_reshaped.reshape(X_test_reshaped.shape[0
 X_train_scaled = X_train_scaled.reshape(X_train_reshaped.shape)
 X_test_scaled = X_test_scaled.reshape(X_test_reshaped.shape)
 
-model_filename = 'CNNmodel.h5'
+
+cnn_model = 'CNNmodel.h5'
 
 # Check if the model file exists
 if os.path.exists('CNNmodel.h5'):
     # Load the saved model
-    model = tf.keras.models.load_model(model_filename)
-    print("Loaded model from disk")
+    model = tf.keras.models.load_model(cnn_model)
+    print("Loaded CNN model from disk")
 else:
     # Define and train the model
     model = tf.keras.Sequential([
@@ -61,6 +66,70 @@ else:
 # Evaluate the model
 loss, accuracy = model.evaluate(X_test_scaled, y_test)
 print(f"Test Accuracy: {accuracy}")
+
+lstm_model = 'LSTMmodel.h5'
+
+# Check if the LSTM model file exists
+if os.path.exists('LSTMmodel.h5'):
+    # Load the saved LSTM model
+    lstm_model = tf.keras.models.load_model(lstm_model)
+    print("Loaded LSTM model from disk")
+else:
+    # Define and train the LSTM model
+    lstm_model = tf.keras.Sequential([
+        tf.keras.layers.LSTM(64, return_sequences=True, input_shape=X_train_scaled.shape[1:]),
+        tf.keras.layers.LSTM(32),
+        tf.keras.layers.Dense(1, activation='sigmoid')
+    ])
+
+    # Compile the LSTM model
+    lstm_model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+    # Train the LSTM model
+    lstm_model.fit(X_train_scaled, y_train, epochs=2, batch_size=32, validation_split=0.2)
+
+    # Save the LSTM model
+    lstm_model.save('LTSMmodel.h5')
+    print("Saved LSTM model to disk")
+
+    
+# Evaluate the LSTM model
+lstm_loss, lstm_accuracy = lstm_model.evaluate(X_test_scaled, y_test)
+print(f"LSTM Test Accuracy: {lstm_accuracy}")
+
+
+transformer_model = 'Transformermodel.h5'
+
+# Check if the Transformer model file exists
+if os.path.exists('Transformermodel.h5'):
+    # Load the pre-trained Transformer model
+    transformer_model = tf.keras.models.load_model(transformer_model)
+    print("Loaded Transformer model from disk")
+else:
+    # Build the Transformer model
+    query_input = Input(shape=(X_train_scaled.shape[1], 1))
+    key_input = Input(shape=(X_train_scaled.shape[1], 1))
+    value_input = Input(shape=(X_train_scaled.shape[1], 1))
+    attention_output = MultiHeadAttention(num_heads=2, key_dim=1)(query_input, key_input, value_input)
+    flatten_layer = Flatten()(attention_output)
+    output = Dense(1, activation='sigmoid')(flatten_layer)
+    transformer_model = Model(inputs=[query_input, key_input, value_input], outputs=output)
+
+    # Compile the transformer model
+    transformer_model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+    # Train the transformer model
+    history_transformer = transformer_model.fit([X_train_scaled, X_train_scaled, X_train_scaled], y_train, epochs=1, batch_size=32, validation_split=0.2)
+    
+    # Save the trained model
+    transformer_model.save('Transformermodel.h5')
+    print("Saved Transformer model to disk")
+
+    # Evaluate Model
+    loss, accuracy = transformer_model.evaluate([X_test_scaled, X_test_scaled, X_test_scaled], y_test)
+    print("Transformer Test Accuracy:", accuracy)
+
+
 
 def extract_features_from_url(url):
     features = [
