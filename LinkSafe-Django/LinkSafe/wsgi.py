@@ -11,6 +11,13 @@ import os
 
 from django.core.wsgi import get_wsgi_application
 
+import sys
+import io
+
+# Set UTF-8 encoding for standard output
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
+
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'LinkSafe.settings')
 
 application = get_wsgi_application()
